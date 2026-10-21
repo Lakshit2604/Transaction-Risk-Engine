@@ -67,13 +67,13 @@ Python 3.11+, pandas, numpy, scikit-learn, LightGBM, SHAP, matplotlib/seaborn, F
 - Results saved to `reports/` (metrics JSON + plots)
 
 ## 11. Definition of done
-- [ ] Baseline and improved model both reported on the same test set
-- [ ] Improvement over baseline is stated with numbers
-- [ ] Threshold justified by cost analysis
-- [ ] API runs locally and in Docker, and is deployed
-- [ ] README has results table + screenshots + live link
-- [ ] Every step has an explanation file
-- [ ] I can explain every decision without looking at the code
+- [x] Baseline and improved model both reported on the same test set
+- [x] Improvement over baseline is stated with numbers
+- [x] Threshold justified by cost analysis
+- [x] API runs locally and in Docker, and is deployed
+- [x] README has results table + screenshots + live link
+- [x] Every step has an explanation file
+- [x] I can explain every decision without looking at the code
 
 ## 12. Resume bullet template (fill with real numbers at the end)
-> Built an end-to-end fraud detection pipeline on ~590K transactions with a time-based validation split; improved PR-AUC from **X** (logistic regression baseline) to **Y** (LightGBM) and cut simulated fraud cost by **Z%** via threshold tuning; deployed via FastAPI + Docker with a Streamlit dashboard.
+> Built an end-to-end fraud detection pipeline on ~590K transactions with a time-based validation split; improved PR-AUC from **0.13** (logistic regression baseline) to **0.55** (LightGBM) and cut simulated fraud cost by **54.8%** ($17,754 savings) via business cost threshold tuning; deployed via FastAPI + Docker with a Streamlit dashboard.
