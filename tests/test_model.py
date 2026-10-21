@@ -59,3 +59,28 @@ def test_model_comparison_results():
     best_model_path = MODELS_DIR / "best_lightgbm.joblib"
     assert best_model_path.is_file()
 
+
+def test_final_evaluation_metrics():
+    """Verify final test set evaluation metrics and cost reduction."""
+    final_metrics_path = REPORTS_DIR / "final_metrics.json"
+    assert final_metrics_path.is_file(), f"Missing final metrics: {final_metrics_path}"
+
+    with open(final_metrics_path, "r") as f:
+        metrics = json.load(f)
+
+    # Check key sections
+    assert "test_baseline_logistic_regression" in metrics
+    assert "test_lightgbm_cost_tuned_threshold" in metrics
+    assert "final_comparison_summary" in metrics
+
+    summary = metrics["final_comparison_summary"]
+    assert summary["final_pr_auc"] > 0.50
+    assert summary["pr_auc_relative_improvement_pct"] > 100.0
+    assert summary["cost_reduction_vs_baseline_pct"] > 40.0
+
+    # Verify visual artifacts
+    assert (REPORTS_DIR / "cost_vs_threshold.png").is_file()
+    assert (REPORTS_DIR / "pr_curve.png").is_file()
+    assert (REPORTS_DIR / "final_confusion_matrix.png").is_file()
+
+
