@@ -1,0 +1,23 @@
+# Exclude heavy raw and processed datasets
+data/
+
+# Exclude virtual environments
+.venv/
+venv/
+ENV/
+
+# Exclude Git & IDE metadata
+.git/
+.gitignore
+.DS_Store
+.idea/
+.vscode/
+
+# Exclude Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/

@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: transaction-risk-api
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: PORT
+        value: 10000
+
+  - type: web
+    name: transaction-risk-dashboard
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app/dashboard.py --server.port $PORT --server.address 0.0.0.0
+    autoDeploy: false
+    envVars:
+      - key: PORT
+        value: 10000
