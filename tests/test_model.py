@@ -35,3 +35,27 @@ def test_baseline_metrics_content():
     assert 0.10 <= metrics["pr_auc"] <= 0.40, f"Unexpected baseline PR-AUC: {metrics['pr_auc']}"
     assert 0.70 <= metrics["roc_auc"] <= 0.90, f"Unexpected baseline ROC-AUC: {metrics['roc_auc']}"
     assert metrics["confusion_matrix"]["true_positives"] > 1000
+
+
+def test_model_comparison_results():
+    """Verify that LightGBM outperforms baseline significantly on validation PR-AUC."""
+    import pandas as pd
+
+    comparison_path = REPORTS_DIR / "model_comparison.csv"
+    assert comparison_path.is_file(), f"Missing comparison report: {comparison_path}"
+
+    df = pd.read_csv(comparison_path)
+    assert len(df) >= 4, f"Expected at least 4 models compared, found {len(df)}"
+
+    baseline_prauc = df[df["model"].str.contains("Logistic")]["pr_auc"].values[0]
+    best_prauc = df["pr_auc"].max()
+
+    # Assert major improvement over baseline
+    assert best_prauc > baseline_prauc + 0.30, (
+        f"Expected LightGBM to improve PR-AUC by >0.30 over baseline {baseline_prauc}, got {best_prauc}"
+    )
+
+    # Check best model artifact exists
+    best_model_path = MODELS_DIR / "best_lightgbm.joblib"
+    assert best_model_path.is_file()
+
