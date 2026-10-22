@@ -21,8 +21,15 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+import sys
+
 # File system paths
 BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+from src.features import FraudFeaturePipeline
+
 MODELS_DIR = BASE_DIR / "models"
 REPORTS_DIR = BASE_DIR / "reports"
 
