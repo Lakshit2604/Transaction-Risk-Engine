@@ -1,5 +1,6 @@
-# Transaction Risk Engine: Production ML Fraud Detection Pipeline
+# Transaction Risk Engine: Production-Style Fraud Detection Pipeline
 
+[![CI](https://github.com/Lakshit2604/Transaction-Risk-Engine/actions/workflows/ci.yml/badge.svg)](https://github.com/Lakshit2604/Transaction-Risk-Engine/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![LightGBM](https://img.shields.io/badge/LightGBM-4.3+-FFA500?style=for-the-badge)](https://lightgbm.readthedocs.io)
@@ -7,38 +8,87 @@
 [![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
-An end-to-end, cost-sensitive fraud detection engine built on **590,540 real-world payment transactions** (IEEE-CIS). Engineered with strict time-based splits to eliminate temporal leakage, cost-optimized operating thresholds ($Cost_{FN} = 10 \times Cost_{FP}$), explainable Tree SHAP diagnostics, a production FastAPI inference service (<15ms latency), an operations Streamlit dashboard, and Docker container orchestration.
+An end-to-end, cost-sensitive fraud detection engine built on **590,540 real-world payment transactions** from the [IEEE-CIS Fraud Detection Competition](https://www.kaggle.com/c/ieee-fraud-detection). Engineered with strict chronological splits to prevent temporal leakage, decision thresholds chosen by minimising validation cost under an asymmetric penalty assumption ($Cost_{FN} = 10 \times Cost_{FP}$), explainable Tree SHAP feature attribution, a production-style FastAPI microservice, an operations Streamlit dashboard, and Docker containerization.
+
+> **Dataset & Transparency Notice:**  
+> The original dataset is hosted on Kaggle and is **not** redistributed in this repository. All API curl examples, dashboard presets, and test cases use purely **synthetic data**. AI assistance (Antigravity IDE) was utilized for pair-programming, scaffolding, and refactoring while the author directed, audited, verified, and can explain every technical decision, mathematical derivation, and line of code.
 
 ---
 
-## Key Business & Technical Results
+## 🌐 Live Demo
 
-On a strict **out-of-time holdout test set (88,581 transactions)** evaluated strictly once:
+* 🖥️ **Interactive Operations Dashboard:** **[transaction-risk-engine.streamlit.app](https://transaction-risk-engine.streamlit.app/)**  
+  *(Manual transaction inspection, 1-click synthetic presets, batch CSV auditing, and model analytics)*
+* 📖 **Interactive API Documentation (Swagger UI):** **[transaction-risk-engine.onrender.com/docs](https://transaction-risk-engine.onrender.com/docs)**  
+  *(Explore and test the live `/health` and `/predict` endpoints)*
+* 💓 **API Health Endpoint:** **[transaction-risk-engine.onrender.com/health](https://transaction-risk-engine.onrender.com/health)**
 
-| Metric | Baseline (Logistic Regression) | Final Engine (LightGBM) | Relative Impact |
-|:---|:---:|:---:|:---:|
-| **PR-AUC (Primary)** | `0.1284` | **`0.5522`** | **+330.1% Improvement** |
-| **ROC-AUC** | `0.7747` | **`0.9128`** | **+17.8% Improvement** |
-| **Simulated Business Cost** | `$32,378.00` | **`$14,624.00`** | **-54.83% Cost Reduction** |
-| **Net Financial Savings** | Reference ($0) | **`$17,754.00` Saved** | **Direct ROI on Holdout** |
-| **Operating Threshold ($T^*)** | `0.5000` (Balanced) | **`0.0543` (Cost-Tuned)** | Minimum Expected Risk |
-| **Recall at $T^*$** | `68.21%` | **`69.45%`** | Catches 2,141 / 3,083 Frauds |
-| **Precision at $T^*$** | `5.30%` | **`29.15%`** | **5.5x Fewer False Alarms** |
-| **Recall @ 80% Precision** | `0.00%` | **`35.94%`** | High-Confidence Auto-Decline |
+> [!NOTE]  
+> **Cold Start Advisory:** The API is hosted on Render's free tier, which spins down after 15 minutes of inactivity. If visiting after an idle period, the initial request or dashboard connection may take **30 to 60 seconds** to wake up the container. Subsequent requests execute normally.
 
 ---
 
-## Resume Highlights (Ready for Applications)
+## 📊 Benchmark & Evaluation Results
 
-> **Machine Learning Engineer / Data Scientist — Transaction Risk Engine**
-> - Built an end-to-end, production fraud detection pipeline on 590K+ IEEE-CIS payment transactions, enforcing strict chronological splits (70/15/15) to prevent temporal data leakage.
-> - Improved out-of-time **PR-AUC from 0.13 to 0.55 (+330%)** and cut simulated financial fraud loss by **54.8% ($17,754 net savings)** by optimizing decision thresholds against asymmetric business costs ($Cost_{FN} = 10 \times Cost_{FP}$).
-> - Engineered an explainable microservice using **FastAPI** with Pydantic v2 schemas (<15ms scoring latency), dynamic Tree SHAP risk drivers, and a **Streamlit** operations dashboard for manual transaction review and batch CSV auditing.
-> - Containerized the multi-service architecture using **Docker** and **Docker Compose**, backed by comprehensive Pytest suites and Render deployment blueprints.
+All metrics were computed strictly on the **out-of-time holdout test set (88,581 transactions)**, which was set aside at the beginning and touched strictly once for final reporting.
+
+> **Cost Assumption:** The business cost assumes an asymmetric 10:1 penalty ratio ($Cost_{FN} = \$10.00$ for missed fraud, $Cost_{FP} = \$1.00$ for a false alert). All financial savings figures represent simulated savings under this assumed operating model.
+
+### Comprehensive Test Set Comparison
+
+| Model | Operating Threshold ($T$) | PR-AUC | ROC-AUC | Precision | Recall | F1 Score | False Positives (FP) | False Negatives (FN) | Simulated Cost ($) |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Logistic Regression (Baseline)** | `0.5000` (Default) | 0.1284 | 0.7747 | 8.54% | 70.29% | 0.1522 | 23,218 | 916 | $32,378.00 |
+| **Logistic Regression (Baseline)** | `0.6934` (Cost-Tuned) | 0.1284 | 0.7747 | 13.75% | 28.84% | 0.1862 | 5,576 | 2,194 | $27,516.00 |
+| **LightGBM (Final Engine)** | `0.5000` (Default) | **0.5522** | **0.9128** | **80.01%** | 35.84% | **0.4951** | **276** | 1,978 | $20,056.00 |
+| **LightGBM (Final Engine)** | `0.0543` (Cost-Tuned)* | **0.5522** | **0.9128** | 29.15% | **69.45%** | 0.4106 | 5,204 | **942** | **$14,624.00** |
+
+*\*Threshold $T^* = 0.0543$ was chosen by minimising validation cost on the validation split.*
+
+### Key Quantitative Takeaways
+* **PR-AUC (Primary Metric):** Improved from **0.1284 to 0.5522 (+330.1% relative improvement)** over the logistic regression baseline.
+* **Simulated Cost Reduction:** Reduced total simulated test loss from **$32,378.00 down to $14,624.00 (54.83% cost reduction)**, saving **$17,754.00** in simulated fraud losses compared to the default baseline. Even when comparing against the cost-tuned baseline ($27,516.00), LightGBM delivers a **46.85% cost reduction ($12,892.00 saved)**.
+* **False Alarm Reduction:**
+  - At the cost-tuned operating threshold ($T^* = 0.0543$), LightGBM produces **5,204 false alarms** compared to the baseline's **23,218 false alarms**—a **77.59% reduction in false positives (4.46x fewer false alarms)** while catching 2,141 frauds.
+  - At the default threshold ($T = 0.5000$), false alarms drop by **98.81% (84.1x fewer false alarms)** from 23,218 to just 276.
 
 ---
 
-## System Architecture
+## 📈 Cost-Ratio Sensitivity Analysis
+
+Because business costs vary across payment gateways, we performed a cost-ratio sensitivity sweep across $5:1$, $10:1$, and $20:1$ cost penalty ratios on the validation split and evaluated the resulting thresholds on the test set. Full data is archived in [`reports/cost_sensitivity.json`](reports/cost_sensitivity.json).
+
+| Cost Ratio ($Cost_{FN} : Cost_{FP}$) | Cost-Optimal Threshold ($T^*$) | LightGBM Test Recall | LightGBM Test Precision | Baseline Test Cost | LightGBM Test Cost | Simulated Savings | Cost Reduction (%) |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **5 : 1** ($5 FN, $1 FP) | `0.1102` | 57.38% | 42.99% | $15,365.00 | $8,916.00 | $6,449.00 | **41.97%** |
+| **10 : 1** ($10 FN, $1 FP) | `0.0611` | 67.27% | 31.19% | $27,516.00 | $14,666.00 | $12,850.00 | **46.70%** |
+| **20 : 1** ($20 FN, $1 FP) | `0.0316` | 77.49% | 20.70% | $41,288.00 | $23,031.00 | $18,257.00 | **44.22%** |
+
+*Observation:* As the penalty for missing a fraudulent transaction increases from 5x to 20x, the cost-minimizing threshold shifts lower from `0.1102` to `0.0316`, increasing recall from 57.4% to 77.5% at the expense of inspecting more false alerts.
+
+---
+
+## ⚡ Measured System Latency
+
+Latency was benchmarked across two environments using synthetic payloads:
+
+1. **Local Standalone Engine (Mac M-Series, Python 3.13):**
+   - **Feature Transformation + LightGBM Inference:** **9.24 ms**
+   - **Tree SHAP Top-3 Attribution:** **16.48 ms**
+   - **Total Local Inference Compute:** **25.72 ms**
+
+2. **Deployed Cloud Microservice (Render Free Tier, 20 Warm Calls over Public HTTPS):**
+   - **Cold Start (Initial Wake-up from Idle Sleep):** ~35–50 seconds
+   - **First Call (Post-Boot):** 415.95 ms
+   - **Minimum Latency:** 453.59 ms
+   - **Median Latency:** **555.47 ms**
+   - **Mean Latency:** 618.27 ms
+   - **p95 Latency:** **1,399.51 ms**  
+   *(Cloud latency includes international internet round-trip network transit, TLS handshakes, FastAPI validation, LightGBM scoring, and Tree SHAP explanation generation).*
+
+---
+
+## 🏛️ System Architecture
 
 ```mermaid
 flowchart TD
@@ -47,210 +97,116 @@ flowchart TD
         B --> C[Strict Chronological Split<br>Train: 70% | Val: 15% | Test: 15%]
     end
 
-    subgraph Feature Engineering & Training
+    subgraph Feature Engineering & Modeling
         C --> D[Leak-Free Feature Pipeline<br>Temporal, Aggregations, Ratios, Out-of-Fold Frequency]
         D --> E[Model Benchmarking<br>Logistic Reg vs Class Weights vs Undersampling vs LightGBM]
-        E --> F[Validation Cost Optimization<br>T* = 0.0543 on Cost FN=$10, FP=$1]
-        F --> G[Explainability Layer<br>Global Tree SHAP + Real-Time Local Attributions]
+        E --> F[Validation Cost Optimization<br>T* chosen by minimising validation cost]
+        F --> G[Explainability Layer<br>Tree SHAP Top-3 Local Risk Drivers]
     end
 
-    subgraph Evaluation
+    subgraph Evaluation & Serving
         G --> H[Final Holdout Test Evaluation<br>PR-AUC: 0.5522 | Cost: $14,624]
-    end
-
-    subgraph Serving & Operations
-        H --> I[FastAPI Scoring Service<br>/predict with Pydantic & Multi-Tier Decisions]
-        H --> J[Streamlit Dashboard<br>Real-Time Presets, Batch CSV Audit, Executive KPIs]
-        I --> K[Docker & Docker Compose<br>libgomp1 OpenMP Support & Render CI/CD]
+        H --> I[Production-Style FastAPI Service<br>/predict with Pydantic v2 & Multi-Tier Decisions]
+        H --> J[Streamlit Operations Dashboard<br>Synthetic Presets, Batch CSV Audit, Executive KPIs]
+        I --> K[Docker & GitHub Actions CI<br>libgomp1 OpenMP Support & Automated Pytest]
         J --> K
     end
 ```
 
 ---
 
-## Visual Reports & Model Insights
+## 🔍 Model Explainability & Risk Drivers (Tree SHAP)
 
-### 1. Precision-Recall & ROC Performance
-PR-AUC is the gold standard for rare-positive fraud detection (3.5% prevalence). The final LightGBM model achieves a **0.5522 PR-AUC** (outperforming the baseline by 330%).
-<p align="center">
-  <img src="reports/pr_curve.png" alt="Precision-Recall Curve" width="750"/>
-</p>
+To provide transparency for payment operations, the engine computes Tree SHAP feature attributions for flagged transactions.
 
-### 2. Business Cost vs. Decision Threshold
-Rather than defaulting to an arbitrary 0.50 cutoff, the threshold $T^* = 0.0543$ was mathematically derived by minimizing the asymmetric cost curve ($FN \times \$10 + FP \times \$1$), saving $17,754 on the holdout test set.
-<p align="center">
-  <img src="reports/cost_vs_threshold.png" alt="Cost vs Decision Threshold" width="750"/>
-</p>
-
-### 3. Tree SHAP Feature Importance
-Tree SHAP explains the exact non-linear drivers behind transaction flags. Top risk indicators include transaction velocity (`C13`, `C1`), spend deviation (`TransactionAmt`), card network (`card6`), and behavioral verification velocity (`V70`, `C14`).
 <p align="center">
   <img src="reports/shap_summary.png" alt="SHAP Beeswarm Feature Importance" width="750"/>
 </p>
 
-### 4. Holdout Test Confusion Matrix
-At $T^* = 0.0543$, the model successfully blocks **2,141 high-risk fraudulent transactions** while keeping false positive investigator reviews manageable.
-<p align="center">
-  <img src="reports/final_confusion_matrix.png" alt="Holdout Confusion Matrix" width="600"/>
-</p>
+### Verified Top Feature Insights
+* **Transaction Amount (`TransactionAmt`):** Non-linear risk distribution. Extreme transaction values (both micro-testing amounts <$3 and large luxury ticket sizes >$1,000) strongly increase fraud risk.
+* **Card Type (`card6`):** Differentiates between **credit** and **debit** cards. Credit cards historically carry substantially higher chargeback and dispute exposure than debit cards. *(Note: Card network branding such as Visa/Mastercard is captured separately in `card4`).*
+* **Anonymised Velocity Counters (`C1`–`C14`):** Proprietary count features representing frequency of associated cards, devices, and email interactions. Anonymised features `C13` and `C1` serve as strong indicators of rapid velocity anomalies.
+* **Anonymised Behavioral Indicators (`V1`–`V339`):** Proprietary engineered behavioral features created by Vesta. Anonymised signals like `V70` reflect verification counts and device consistency.
 
 ---
 
-## Repository Structure
+## 📸 Dashboard & API Screenshots
 
-```text
-Transaction-Risk-Engine/
-├── app/
-│   ├── __init__.py
-│   ├── api.py                    # Production FastAPI scoring service (Pydantic v2 schemas)
-│   └── dashboard.py              # Streamlit operations & executive analytics dashboard
-├── data/                         # Excluded from git (download instructions below)
-│   ├── raw/
-│   └── processed/
-├── docs/
-│   ├── explanations/             # Step-by-step interview guides (00 to 12)
-│   └── interview_cheatsheet.md   # 1-page interview cheat sheet for recruiter/hiring manager screens
-├── models/
-│   ├── baseline_model.joblib     # Logistic regression pipeline
-│   ├── best_lightgbm.joblib      # Production LightGBM model binary
-│   └── feature_pipeline.joblib   # Serialized leak-free feature engineering pipeline
-├── notebooks/
-│   ├── 01_eda.ipynb              # Exploratory data analysis & fraud patterns
-│   └── 02_modelling.ipynb        # Hyperparameter tuning & cost analysis
-├── reports/                      # Diagnostic plots, JSON metrics, and SHAP artifacts
-│   ├── baseline_metrics.json
-│   ├── final_metrics.json
-│   ├── cost_vs_threshold.png
-│   ├── pr_curve.png
-│   ├── final_confusion_matrix.png
-│   ├── shap_summary.png
-│   └── error_analysis.md
-├── scripts/
-│   ├── download_data.py          # Automated Kaggle API dataset downloader
-│   └── prepare_data.py           # End-to-end data preparation workflow
-├── src/
-│   ├── config.py                 # Central configurations, random seeds, and cost parameters
-│   ├── data.py                   # Data ingestion, downcasting (-47.9% RAM), and cleaning
-│   └── features.py               # Feature engineering pipeline & transform_single()
-├── tests/
-│   ├── test_api.py               # API endpoint unit tests
-│   ├── test_features.py          # Feature transformation assertions
-│   └── test_splits.py            # Strict chronological boundary unit tests
-├── Dockerfile                    # Multi-stage production container specification
-├── docker-compose.yml            # Multi-service container orchestration (API + Dashboard)
-├── render.yaml                   # Infrastructure-as-code cloud deployment blueprint
-├── requirements.txt              # Pinned production Python dependencies
-├── Implementation Plan.md        # Step-by-step technical progression plan
-├── PRD.md                        # Product requirements document
-└── README.md
-```
+*(Screenshots can be added to `docs/images/` for rich portfolio presentation)*
+
+| Screenshot | Description | Target Path |
+|:---|:---|:---|
+| **Single-Transaction Scoring** | Real-time risk gauge, decision badge, and SHAP drivers | `docs/images/01_single_transaction_scoring.png` |
+| **Batch CSV Scoring** | Batch file upload, risk breakdown KPIs, and CSV export | `docs/images/02_batch_scoring_page.png` |
+| **Model Performance Analytics** | Diagnostic PR curves, cost curves, and confusion matrix | `docs/images/03_model_analytics_page.png` |
+| **FastAPI Swagger Documentation** | Interactive OpenAPI docs and schema testing at `/docs` | `docs/images/04_api_swagger_docs.png` |
 
 ---
 
-## Quickstart & Local Setup
+## ⚠️ Limitations & Future Work
 
-### 1. Prerequisites & Virtual Environment
+* **Dataset Age (2019):** Trained on 2019 e-commerce transaction data. Modern fraud vectors (e.g., account takeover, synthetic identity fraud, crypto off-ramping) exhibit newer behavioral signatures.
+* **Anonymised Features:** Over 300 columns (`V` and `C` series) are anonymised by the data provider, preventing domain-specific semantic feature engineering on those attributes.
+* **Simulated Business Costs:** The 10:1 cost ratio ($Cost_{FN} = \$10, Cost_{FP} = \$1$) is an assumed heuristic. Production financial institutions dynamically price fraud costs by merchant category code (MCC), interchange rates, and dispute fees.
+* **Single E-Commerce Dataset:** Evaluated on one payment provider dataset; performance on cross-border multi-currency transactions or instant bank transfers (e.g., FedNow, UPI) may require retraining.
+* **Concept Drift & Live Streaming:** The current setup operates on batch data. Future work includes integrating Redis for sub-minute sliding window velocity features and Evidently AI for continuous covariate shift monitoring.
+* **Free-Tier Cold Starts:** Deployed on free cloud tiers (Render), which hibernate after 15 minutes of inactivity and take 30–60 seconds to wake up. Enterprise deployments would run on auto-scaled Kubernetes (EKS/GKE) or AWS ECS behind an Application Load Balancer.
+
+---
+
+## 💻 Quickstart & Local Setup
+
+### 1. Clone & Set Up Environment
 ```bash
-# Clone the repository
 git clone https://github.com/Lakshit2604/Transaction-Risk-Engine.git
 cd Transaction-Risk-Engine
 
-# Create and activate virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
-### 2. Download Dataset
-Place your Kaggle API key at `~/.kaggle/kaggle.json` and download the IEEE-CIS dataset:
-```bash
-python scripts/download_data.py
-```
-
-### 3. Run Unit Tests
-Verify pipeline integrity and test bounds:
+### 2. Run Test Suite
 ```bash
 pytest tests/ -v
 ```
 
-### 4. Run the FastAPI Service Locally
+### 3. Run FastAPI Service Locally
 ```bash
 uvicorn app.api:app --host 0.0.0.0 --port 8000 --reload
 ```
-- Interactive Swagger API docs: `http://localhost:8000/docs`
-- Healthcheck endpoint: `http://localhost:8000/health`
-- Predict transaction: `POST http://localhost:8000/predict`
+Interactive docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-Example API payload:
+Example synthetic test payload:
 ```bash
 curl -X POST "http://localhost:8000/predict" \
      -H "Content-Type: application/json" \
      -d '{
-       "TransactionAmt": 450.00,
+       "TransactionAmt": 350.00,
        "ProductCD": "W",
        "card1": 13926,
-       "card2": 555.0,
-       "card3": 150.0,
-       "card4": "discover",
-       "card5": 102.0,
+       "card4": "visa",
        "card6": "credit",
-       "addr1": 315.0,
-       "addr2": 87.0,
        "P_emaildomain": "gmail.com",
-       "C1": 1.0, "C2": 1.0, "C3": 0.0, "C4": 0.0, "C5": 0.0,
-       "C6": 1.0, "C7": 0.0, "C8": 0.0, "C9": 1.0, "C10": 0.0,
-       "C11": 1.0, "C12": 0.0, "C13": 1.0, "C14": 1.0,
-       "D1": 14.0, "D4": 14.0, "D10": 13.0, "D15": 0.0,
-       "V70": 0.0, "V127": 117.0, "V307": 117.0,
-       "TransactionDT": 86400
+       "C1": 2.0,
+       "C13": 5.0
      }'
 ```
 
-### 5. Run the Streamlit Dashboard Locally
+### 4. Run Streamlit Operations Dashboard Locally
 ```bash
 streamlit run app/dashboard.py
 ```
-Access the dashboard at `http://localhost:8501`. Test single transactions using 1-click sample presets, batch-score CSV files, or review executive model performance charts.
+Dashboard will open at [http://localhost:8501](http://localhost:8501).
 
----
-
-## Docker & Container Execution
-
-Run the complete decoupled microservice stack (FastAPI on `:8000` + Streamlit on `:8501`) with Docker Compose:
+### 5. Run with Docker Compose
 ```bash
-# Build and run with Docker Compose
 docker compose up --build
-
-# Run in detached mode
-docker compose up -d
-
-# Stop services
-docker compose down
 ```
 
 ---
 
-## Cloud Deployment (Render / Cloud Hosts)
-
-The repository includes a declarative `render.yaml` Blueprint for 1-click deployment on Render:
-1. Fork or push this repository to your GitHub account.
-2. Log into [Render](https://render.com) and navigate to **Blueprints**.
-3. Connect your repository; Render will automatically detect `render.yaml` and provision:
-   - **`transaction-risk-api`**: FastAPI inference service on port 10000.
-   - **`transaction-risk-dashboard`**: Streamlit visual interface on port 10000.
-
----
-
-## Interview & Architecture Deep-Dive
-
-For detailed technical interview preparation on design choices, statistical justifications, and failure modes, refer to:
-- **[Interview Cheat Sheet](docs/interview_cheatsheet.md)**: 1-page condensed review of metric selection, leak prevention, threshold tuning, and error analysis.
-- **[Step Explanations](docs/explanations/)**: Complete, step-by-step breakdown of every implementation phase (Steps 00 to 12).
-
----
-
-## License
+## 📄 License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

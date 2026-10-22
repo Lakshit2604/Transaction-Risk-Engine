@@ -1,0 +1,41 @@
+[
+  {
+    "cost_ratio": "5:1",
+    "cost_fn_usd": 5.0,
+    "cost_fp_usd": 1.0,
+    "baseline_threshold": 0.8054,
+    "lightgbm_threshold": 0.1102,
+    "baseline_cost": 15365.0,
+    "lightgbm_cost": 8916.0,
+    "simulated_savings": 6449.0,
+    "cost_reduction_pct": 41.97,
+    "lightgbm_recall": 0.5738,
+    "lightgbm_precision": 0.4299
+  },
+  {
+    "cost_ratio": "10:1",
+    "cost_fn_usd": 10.0,
+    "cost_fp_usd": 1.0,
+    "baseline_threshold": 0.6934,
+    "lightgbm_threshold": 0.0611,
+    "baseline_cost": 27516.0,
+    "lightgbm_cost": 14666.0,
+    "simulated_savings": 12850.0,
+    "cost_reduction_pct": 46.7,
+    "lightgbm_recall": 0.6727,
+    "lightgbm_precision": 0.3119
+  },
+  {
+    "cost_ratio": "20:1",
+    "cost_fn_usd": 20.0,
+    "cost_fp_usd": 1.0,
+    "baseline_threshold": 0.4931,
+    "lightgbm_threshold": 0.0316,
+    "baseline_cost": 41288.0,
+    "lightgbm_cost": 23031.0,
+    "simulated_savings": 18257.0,
+    "cost_reduction_pct": 44.22,
+    "lightgbm_recall": 0.7749,
+    "lightgbm_precision": 0.207
+  }
+]
