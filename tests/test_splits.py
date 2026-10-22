@@ -11,6 +11,12 @@ import pandas as pd
 from src.config import TIME_COL, TARGET_COL, PROCESSED_DATA_DIR
 from src.data import load_splits, load_cleaned_data
 
+# Skip split verification in clean CI environments where full datasets are excluded from Git
+pytestmark = pytest.mark.skipif(
+    not (PROCESSED_DATA_DIR / "train.parquet").is_file(),
+    reason="Full dataset parquet splits are local-only and excluded from Git.",
+)
+
 
 @pytest.fixture(scope="module")
 def splits():
