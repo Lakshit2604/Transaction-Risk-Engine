@@ -35,3 +35,9 @@ models/*
 
 # Environment secrets
 .env
+
+# Internal specifications & interview prep (Local only)
+docs/explanations/
+docs/interview_cheatsheet.md
+PRD.md
+Implementation Plan.md
