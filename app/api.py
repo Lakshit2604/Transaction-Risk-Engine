@@ -8,6 +8,7 @@ Endpoints:
 
 from contextlib import asynccontextmanager
 from pathlib import Path
+import sys
 from typing import Dict, Any, List, Optional
 import joblib
 import numpy as np
@@ -15,6 +16,11 @@ import pandas as pd
 import shap
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field, ConfigDict
+
+# Ensure project root is in sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 from src.config import MODELS_DIR, REPORTS_DIR
 from src.features import FraudFeaturePipeline
