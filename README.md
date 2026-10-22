@@ -1,10 +1,10 @@
 # Transaction Risk Engine: Production-Style Fraud Detection Pipeline
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://transaction-risk-engine.streamlit.app/)
+[![API Docs](https://img.shields.io/badge/Swagger-API%20Docs-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://transaction-risk-engine.onrender.com/docs)
 [![CI](https://github.com/Lakshit2604/Transaction-Risk-Engine/actions/workflows/ci.yml/badge.svg)](https://github.com/Lakshit2604/Transaction-Risk-Engine/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![LightGBM](https://img.shields.io/badge/LightGBM-4.3+-FFA500?style=for-the-badge)](https://lightgbm.readthedocs.io)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.32+-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io)
 [![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
@@ -15,16 +15,16 @@ An end-to-end, cost-sensitive fraud detection engine built on **590,540 real-wor
 
 ---
 
-## 🌐 Live Demo
+## 🌐 Live Demo & Interactive Services
 
-* 🖥️ **Interactive Operations Dashboard:** **[transaction-risk-engine.streamlit.app](https://transaction-risk-engine.streamlit.app/)**  
-  *(Manual transaction inspection, 1-click synthetic presets, batch CSV auditing, and model analytics)*
-* 📖 **Interactive API Documentation (Swagger UI):** **[transaction-risk-engine.onrender.com/docs](https://transaction-risk-engine.onrender.com/docs)**  
-  *(Explore and test the live `/health` and `/predict` endpoints)*
-* 💓 **API Health Endpoint:** **[transaction-risk-engine.onrender.com/health](https://transaction-risk-engine.onrender.com/health)**
+| Service | Live Link | Description |
+|:---|:---|:---|
+| **Streamlit Operations Dashboard** | 🖥️ **[transaction-risk-engine.streamlit.app](https://transaction-risk-engine.streamlit.app/)** | Real-time transaction scoring, 1-click synthetic presets, batch CSV auditing & model analytics |
+| **FastAPI Interactive Docs** | 📖 **[transaction-risk-engine.onrender.com/docs](https://transaction-risk-engine.onrender.com/docs)** | Interactive Swagger UI testing `/health` and `/predict` endpoints |
+| **API Health Check** | 💓 **[transaction-risk-engine.onrender.com/health](https://transaction-risk-engine.onrender.com/health)** | Microservice health metadata and operating threshold |
 
 > [!NOTE]  
-> **Cold Start Advisory:** The API is hosted on Render's free tier, which spins down after 15 minutes of inactivity. If visiting after an idle period, the initial request or dashboard connection may take **30 to 60 seconds** to wake up the container. Subsequent requests execute normally.
+> **Cold Start Advisory:** The backend API is hosted on Render's free tier, which enters a sleep state after 15 minutes of inactivity. If visiting after an idle period, the initial request or dashboard connection will take **30 to 60 seconds** to wake up the container. Subsequent requests execute in real-time.
 
 ---
 
