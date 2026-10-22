@@ -102,23 +102,23 @@ Latency was benchmarked across two environments using synthetic payloads:
 
 ```mermaid
 flowchart TD
-    subgraph Data Layer
-        A[IEEE-CIS Dataset<br>590,540 Transactions] --> B[Data Cleaning & Memory Downcasting<br>-47.9% RAM Reduction]
-        B --> C[Strict Chronological Split<br>Train: 70% | Val: 15% | Test: 15%]
+    subgraph DataLayer["1. Data Layer & Leak-Free Splitting"]
+        A["IEEE-CIS Payment Dataset<br/>590,540 Raw Transactions"] --> B["Data Cleaning & Memory Optimization<br/>-47.9% RAM Reduction"]
+        B --> C["Strict Chronological Split<br/>Train: 70% · Val: 15% · Test: 15%"]
     end
 
-    subgraph Feature Engineering & Modeling
-        C --> D[Leak-Free Feature Pipeline<br>Temporal, Aggregations, Ratios, Out-of-Fold Frequency]
-        D --> E[Model Benchmarking<br>Logistic Reg vs Class Weights vs Undersampling vs LightGBM]
-        E --> F[Validation Cost Optimization<br>T* chosen by minimising validation cost]
-        F --> G[Explainability Layer<br>Tree SHAP Top-3 Local Risk Drivers]
+    subgraph ModelingLayer["2. Feature Engineering & Training"]
+        C --> D["Feature Engineering Pipeline<br/>Velocity, Monetary Ratios, Frequencies"]
+        D --> E["Model Benchmarking & Selection<br/>Logistic Regression vs. LightGBM"]
+        E --> F["Validation Threshold Optimization<br/>Cost-Tuned Cutoff: T* = 0.0543"]
+        F --> G["Explainability Engine<br/>Tree SHAP Top-3 Risk Attributions"]
     end
 
-    subgraph Evaluation & Serving
-        G --> H[Final Holdout Test Evaluation<br>PR-AUC: 0.5522 | Cost: $14,624]
-        H --> I[Production-Style FastAPI Service<br>/predict with Pydantic v2 & Multi-Tier Decisions]
-        H --> J[Streamlit Operations Dashboard<br>Synthetic Presets, Batch CSV Audit, Executive KPIs]
-        I --> K[Docker & GitHub Actions CI<br>libgomp1 OpenMP Support & Automated Pytest]
+    subgraph ServingLayer["3. Serving & Operations"]
+        G --> H["Final Holdout Test Evaluation<br/>PR-AUC: 0.5522 · 54.8% Cost Cut"]
+        H --> I["FastAPI Microservice<br/>/predict with Pydantic v2 Schemas"]
+        H --> J["Streamlit Operations Dashboard<br/>Real-Time Scoring & Batch CSV Audits"]
+        I --> K["Cloud Deployment & CI<br/>Render API + Streamlit Cloud + GitHub Actions"]
         J --> K
     end
 ```
@@ -141,16 +141,21 @@ To provide transparency for payment operations, the engine computes Tree SHAP fe
 
 ---
 
-## 📸 Dashboard & API Screenshots
+## 📸 Live Application Showcase
 
-*(Screenshots can be added to `docs/images/` for rich portfolio presentation)*
+### 1. Real-Time Transaction Scoring & Explainability
+Risk analysts can inspect single transactions manually or use 1-click synthetic presets. The system returns the predicted fraud probability, automated operational decision (`APPROVE`, `CHALLENGE`, or `DECLINE`), and the top contributing behavioral risk drivers.
 
-| Screenshot | Description | Target Path |
-|:---|:---|:---|
-| **Single-Transaction Scoring** | Real-time risk gauge, decision badge, and SHAP drivers | `docs/images/01_single_transaction_scoring.png` |
-| **Batch CSV Scoring** | Batch file upload, risk breakdown KPIs, and CSV export | `docs/images/02_batch_scoring_page.png` |
-| **Model Performance Analytics** | Diagnostic PR curves, cost curves, and confusion matrix | `docs/images/03_model_analytics_page.png` |
-| **FastAPI Swagger Documentation** | Interactive OpenAPI docs and schema testing at `/docs` | `docs/images/04_api_swagger_docs.png` |
+<p align="center">
+  <img src="docs/images/01_dashboard_realtime_scoring.png" alt="Live Real-Time Scoring Interface" width="90%"/>
+</p>
+
+### 2. Model Performance Analytics & Diagnostic Curves
+The Executive Analytics view exposes out-of-time test metrics, comparison benchmarks against the logistic baseline, and diagnostic curves (Precision-Recall, Cost vs. Threshold, Confusion Matrix, and SHAP Beeswarm).
+
+<p align="center">
+  <img src="docs/images/02_dashboard_model_analytics.png" alt="Live Model Analytics Interface" width="90%"/>
+</p>
 
 ---
 
