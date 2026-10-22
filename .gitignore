@@ -21,9 +21,12 @@ data/raw/*
 data/processed/*
 !data/processed/.gitkeep
 
-# Models (Heavy binary artifacts)
+# Models (Track lightweight trained model artifacts under 50MB)
 models/*
 !models/.gitkeep
+!models/baseline_model.joblib
+!models/best_lightgbm.joblib
+!models/feature_pipeline.joblib
 
 # IDE & OS
 .DS_Store

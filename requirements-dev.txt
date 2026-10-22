@@ -1,0 +1,10 @@
+# Development, Testing, and Research Dependencies
+-r requirements.txt
+
+# Testing & Coverage
+pytest>=8.0.0
+pytest-cov>=4.1.0
+
+# Interactive Notebooks & Data Acquisition
+ipykernel>=6.29.0
+kaggle>=2.2.0

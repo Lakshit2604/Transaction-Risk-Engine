@@ -18,6 +18,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# Create non-root system user for security compliance
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin -c "Application Service User" appuser
+
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -28,11 +31,15 @@ COPY app/ ./app/
 COPY reports/ ./reports/
 COPY models/ ./models/
 
+# Secure file permissions and switch to non-root user
+RUN chown -R appuser:appuser /app
+USER appuser
+
 # Expose API and Dashboard ports
 EXPOSE 8000 8501
 
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+# Healthcheck to monitor container liveness
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:${PORT}/health || exit 1
 
 # Default command: Run FastAPI service using Uvicorn

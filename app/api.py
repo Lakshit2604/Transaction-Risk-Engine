@@ -1,20 +1,16 @@
-"""FastAPI production service for real-time transaction fraud detection.
-
-Endpoints:
-- GET /health: Health check and model metadata.
-- POST /predict: Evaluates transaction risk, probability, tiered decision,
-  and local SHAP explainability reasons.
-"""
-
+import os
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
-import sys
 from typing import Dict, Any, List, Optional
 import joblib
 import numpy as np
 import pandas as pd
 import shap
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ConfigDict
 
 # Ensure project root is in sys.path
@@ -30,7 +26,7 @@ MODEL_PATH = MODELS_DIR / "best_lightgbm.joblib"
 PIPELINE_PATH = MODELS_DIR / "feature_pipeline.joblib"
 FINAL_METRICS_PATH = REPORTS_DIR / "final_metrics.json"
 
-# In-memory global artifacts
+# In-memory global artifacts (loaded strictly once on startup)
 model = None
 feature_pipeline: Optional[FraudFeaturePipeline] = None
 tree_explainer = None
@@ -39,7 +35,7 @@ optimal_threshold: float = 0.0543
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load model, feature pipeline, and SHAP explainer on startup."""
+    """Load model, feature pipeline, and SHAP explainer on startup (once per process)."""
     global model, feature_pipeline, tree_explainer, optimal_threshold
 
     print("Loading ML artifacts into memory...")
@@ -68,8 +64,39 @@ app = FastAPI(
     title="Transaction Risk Engine API",
     description="Real-time ML fraud detection pipeline with SHAP explainability",
     version="1.0.0",
+    debug=False,
     lifespan=lifespan,
 )
+
+# CORS configuration restricted to dashboard origins
+ALLOWED_ORIGINS_ENV = os.getenv("ALLOWED_ORIGINS", "")
+allowed_origins = [orig.strip() for orig in ALLOWED_ORIGINS_ENV.split(",") if orig.strip()] if ALLOWED_ORIGINS_ENV else [
+    "http://localhost:8501",
+    "http://127.0.0.1:8501",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.hf\.space|https://.*\.onrender\.com|http://localhost:\d+",
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Return clean, user-friendly 422 validation errors."""
+    clean_errors = []
+    for err in exc.errors():
+        field = " -> ".join(str(loc) for loc in err.get("loc", []) if loc != "body")
+        msg = err.get("msg", "Invalid value")
+        clean_errors.append({"field": field or "payload", "message": msg})
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": "Payload validation failed", "errors": clean_errors},
+    )
 
 
 class TransactionRequest(BaseModel):
@@ -234,3 +261,10 @@ def predict_fraud(transaction: TransactionRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Inference error: {str(e)}",
         )
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("app.api:app", host="0.0.0.0", port=port, reload=False)

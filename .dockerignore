@@ -13,7 +13,7 @@ ENV/
 .idea/
 .vscode/
 
-# Exclude Python caches
+# Exclude Python caches & testing
 __pycache__/
 *.pyc
 *.pyo
@@ -21,3 +21,8 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Exclude development notebooks and raw experimental reports
+notebooks/
+reports/raw/
+tests/

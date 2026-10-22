@@ -204,7 +204,7 @@ class FraudFeaturePipeline:
     @classmethod
     def load(cls, filepath: Optional[Path] = None) -> "FraudFeaturePipeline":
         """Load fitted pipeline from disk."""
-        path = filepath or (MODELS_DIR / "feature_pipeline.joblib")
+        path = Path(filepath) if filepath else (MODELS_DIR / "feature_pipeline.joblib")
         if not path.is_file():
             raise FileNotFoundError(f"Fitted feature pipeline not found at {path}")
         pipeline = joblib.load(path)

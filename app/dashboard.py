@@ -1,16 +1,20 @@
 """Streamlit interactive fraud detection dashboard.
 
 Features:
-1. Live Transaction Risk Scorer (single transaction manual entry + 1-click sample presets).
+1. Live Transaction Risk Scorer (single transaction manual entry + 1-click synthetic presets).
 2. Batch CSV Upload & Scoring (upload raw CSV, view risk distributions, export scored results).
 3. Executive Analytics & Model Performance (PR-AUC, cost savings, PR curves, confusion matrix, and SHAP).
 """
 
 import json
+import os
 from pathlib import Path
+import sys
+from typing import Dict, Any, Tuple
 import joblib
 import numpy as np
 import pandas as pd
+import requests
 import streamlit as st
 
 # Configure page layout and branding
@@ -20,8 +24,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
-import sys
 
 # File system paths
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -37,16 +39,29 @@ MODEL_PATH = MODELS_DIR / "best_lightgbm.joblib"
 PIPELINE_PATH = MODELS_DIR / "feature_pipeline.joblib"
 FINAL_METRICS_PATH = REPORTS_DIR / "final_metrics.json"
 
+# API Configuration from environment variable
+API_URL = os.getenv("API_URL", "http://localhost:8000").rstrip("/")
+
+
+def check_api_health(url: str) -> Tuple[bool, Dict[str, Any]]:
+    """Check connectivity to the FastAPI risk microservice."""
+    try:
+        resp = requests.get(f"{url}/health", timeout=3.0)
+        if resp.status_code == 200:
+            return True, resp.json()
+        return False, {"error": f"HTTP {resp.status_code}"}
+    except Exception as e:
+        return False, {"error": str(e)}
+
 
 @st.cache_resource
-def load_artifacts():
-    """Load and cache the trained LightGBM model, feature pipeline, and optimal threshold."""
+def load_local_artifacts():
+    """Load local artifacts if present on disk for local evaluation or fallback."""
     if not MODEL_PATH.is_file() or not PIPELINE_PATH.is_file():
-        st.error("Model artifacts not found in models/. Please run training pipeline first.")
         return None, None, 0.0543
 
     model = joblib.load(MODEL_PATH)
-    pipeline = joblib.load(PIPELINE_PATH)
+    pipeline = FraudFeaturePipeline.load(PIPELINE_PATH)
 
     opt_threshold = 0.0543
     if FINAL_METRICS_PATH.is_file():
@@ -57,10 +72,10 @@ def load_artifacts():
     return model, pipeline, opt_threshold
 
 
-model, pipeline, optimal_threshold = load_artifacts()
+local_model, local_pipeline, default_threshold = load_local_artifacts()
 
 # -------------------------------------------------------------
-# Sidebar
+# Sidebar: Connectivity & Controls
 # -------------------------------------------------------------
 st.sidebar.title("🛡️ Risk Engine Navigation")
 app_mode = st.sidebar.radio(
@@ -69,10 +84,27 @@ app_mode = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.markdown(f"**Operating Threshold:** `{optimal_threshold:.4f}`")
+st.sidebar.markdown("##### 🔌 API Connection Status")
+api_online, api_meta = check_api_health(API_URL)
+
+if api_online:
+    st.sidebar.success(f"🟢 **API Online** (`{API_URL}`)")
+    operating_threshold = api_meta.get("operating_threshold", default_threshold)
+else:
+    st.sidebar.warning("🟡 **API Connecting / Sleeping**")
+    st.sidebar.caption(
+        f"Target: `{API_URL}`\n\n"
+        "Free-tier cloud containers (Render) spin down after 15m of inactivity. "
+        "A cold-start wake-up takes roughly 30 to 60 seconds."
+    )
+    if st.sidebar.button("🔄 Retry Connection"):
+        st.rerun()
+    operating_threshold = default_threshold
+
+st.sidebar.markdown(f"**Operating Threshold ($T^*$):** `{operating_threshold:.4f}`")
 st.sidebar.markdown("**Decision Policy:**")
-st.sidebar.markdown("- 🟢 `P < 0.054`: **APPROVE**")
-st.sidebar.markdown("- 🟡 `0.054 ≤ P < 0.50`: **CHALLENGE (OTP)**")
+st.sidebar.markdown(f"- 🟢 `P < {operating_threshold:.3f}`: **APPROVE**")
+st.sidebar.markdown(f"- 🟡 `{operating_threshold:.3f} ≤ P < 0.50`: **CHALLENGE (OTP)**")
 st.sidebar.markdown("- 🔴 `P ≥ 0.50`: **DECLINE (Block)**")
 st.sidebar.markdown("---")
 st.sidebar.info("Flagship ML Project: IEEE-CIS Transaction Fraud Detection on 590K records.")
@@ -83,12 +115,19 @@ st.sidebar.info("Flagship ML Project: IEEE-CIS Transaction Fraud Detection on 59
 if app_mode == "Real-Time Scoring":
     st.title("⚡ Real-Time Transaction Risk Evaluation")
     st.markdown(
-        "Evaluate incoming card transactions in real-time, generate automated fraud decisions, "
-        "and inspect contributing risk factors."
+        "Evaluate incoming payment transactions in real-time. Features automated risk categorization, "
+        "decisioning, and explainable Tree SHAP attribution drivers."
     )
 
-    # 1-Click Sample Previews
-    st.subheader("1-Click Presets")
+    if not api_online and local_model is None:
+        st.error(
+            "⚠️ **API is currently offline and local model artifacts are not available.** "
+            "If deployed to Render, please allow ~30–60 seconds for the free-tier container to wake up, "
+            "then click **Retry Connection** in the sidebar."
+        )
+
+    # 1-Click Sample Previews (Synthetic data only, no real IEEE-CIS rows)
+    st.subheader("1-Click Presets (Synthetic)")
     col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 3])
 
     preset = None
@@ -147,18 +186,18 @@ if app_mode == "Real-Time Scoring":
                 value=int(preset["card1"]) if preset else 13500,
             )
             card4 = st.selectbox(
-                "Card Network",
+                "Card Network (card4)",
                 ["visa", "mastercard", "discover", "american express"],
                 index=0 if not preset else (0 if preset["card4"] == "visa" else 1),
             )
             card6 = st.selectbox(
-                "Card Category",
+                "Card Type (card6)",
                 ["debit", "credit"],
                 index=0 if not preset else (0 if preset["card6"] == "debit" else 1),
             )
 
         with col3:
-            st.markdown("##### 🌐 Network & Velocity")
+            st.markdown("##### 🌐 Network & Anonymised Velocity")
             p_email = st.text_input(
                 "Purchaser Email Domain",
                 value=preset["P_emaildomain"] if preset else "gmail.com",
@@ -168,19 +207,19 @@ if app_mode == "Real-Time Scoring":
                 value=preset["R_emaildomain"] if preset else "gmail.com",
             )
             c1_val = st.number_input(
-                "Velocity Counter (C1)",
+                "Velocity Counter (C1 - anonymised)",
                 min_value=0.0,
                 max_value=500.0,
                 value=float(preset["C1"]) if preset else 1.0,
             )
             c13_val = st.number_input(
-                "Historical Spend Counter (C13)",
+                "Spend Counter (C13 - anonymised)",
                 min_value=0.0,
                 max_value=500.0,
                 value=float(preset["C13"]) if preset else 2.0,
             )
 
-        submit = st.form_submit_button("⚡ Score Transaction Risk", use_container_width=True)
+        submit = st.form_submit_button("⚡ Score Transaction Risk")
 
     if submit or preset:
         payload = {
@@ -197,146 +236,184 @@ if app_mode == "Real-Time Scoring":
             "C13": float(c13_val),
         }
 
-        # Transform and score
-        X_single = pipeline.transform_single(payload)
-        prob = float(model.predict_proba(X_single)[:, 1][0])
+        prob = None
+        decision = None
+        risk_level = None
+        top_features = []
 
-        st.markdown("---")
-        st.subheader("🎯 Evaluation Result")
+        # Mode A: Score via live REST API if available
+        if api_online:
+            try:
+                with st.spinner("Scoring via Risk Engine Microservice..."):
+                    resp = requests.post(f"{API_URL}/predict", json=payload, timeout=12.0)
+                if resp.status_code == 200:
+                    api_data = resp.json()
+                    prob = api_data["fraud_probability"]
+                    decision = api_data["decision"]
+                    risk_level = api_data["risk_level"]
+                    top_features = api_data.get("top_contributing_features", [])
+                else:
+                    st.error(f"API returned status {resp.status_code}: {resp.text}")
+            except Exception as e:
+                st.warning(f"⚠️ Microservice request encountered an issue ({str(e)}). Attempting local fallback...")
 
-        res_col1, res_col2, res_col3 = st.columns(3)
+        # Mode B: Fallback to local model execution if API unavailable
+        if prob is None and local_model is not None and local_pipeline is not None:
+            X_single = local_pipeline.transform_single(payload)
+            prob = float(local_model.predict_proba(X_single)[:, 1][0])
+            if prob >= 0.50:
+                decision = "DECLINE"
+                risk_level = "HIGH RISK (Decline)"
+            elif prob >= operating_threshold:
+                decision = "CHALLENGE"
+                risk_level = "MEDIUM RISK (Step-Up 3D-Secure)"
+            else:
+                decision = "APPROVE"
+                risk_level = "LOW RISK (Approved)"
 
-        res_col1.metric("Predicted Fraud Probability", f"{prob * 100:.2f}%")
+        if prob is not None:
+            st.markdown("---")
+            st.subheader("🎯 Evaluation Result")
 
-        if prob >= 0.50:
-            res_col2.error("🚨 Decision: DECLINE")
-            res_col3.metric("Risk Level", "HIGH RISK (Decline)")
-        elif prob >= optimal_threshold:
-            res_col2.warning("⚠️ Decision: CHALLENGE (OTP)")
-            res_col3.metric("Risk Level", "MEDIUM RISK (Step-Up 3D-Secure)")
-        else:
-            res_col2.success("✅ Decision: APPROVE")
-            res_col3.metric("Risk Level", "LOW RISK (Approved)")
+            res_col1, res_col2, res_col3 = st.columns(3)
+            res_col1.metric("Predicted Fraud Probability", f"{prob * 100:.2f}%")
 
-        # Feature Drivers
-        st.markdown("##### 🔍 Key Risk Drivers for this Transaction")
-        reasons = []
-        if amt > 500:
-            reasons.append({"Feature": "Transaction Amount", "Value": f"${amt:.2f}", "Role": "Elevated ticket size"})
-        if c1_val > 10 or c13_val > 20:
-            reasons.append({"Feature": "Velocity Counters", "Value": f"C1={c1_val}, C13={c13_val}", "Role": "Unusually rapid authorization frequency"})
-        if p_email != r_email:
-            reasons.append({"Feature": "Email Domain Mismatch", "Value": f"{p_email} vs {r_email}", "Role": "Discrepancy between sender and receiver"})
-        if card6 == "credit":
-            reasons.append({"Feature": "Credit Line Exposure", "Value": "Credit", "Role": "Higher default chargeback liability"})
+            if decision == "DECLINE":
+                res_col2.error("🚨 Decision: DECLINE")
+                res_col3.metric("Risk Level", risk_level or "HIGH")
+            elif decision == "CHALLENGE":
+                res_col2.warning("⚠️ Decision: CHALLENGE (OTP)")
+                res_col3.metric("Risk Level", risk_level or "MEDIUM")
+            else:
+                res_col2.success("✅ Decision: APPROVE")
+                res_col3.metric("Risk Level", risk_level or "LOW")
 
-        if not reasons:
-            reasons.append({"Feature": "Baseline History", "Value": "Normal", "Role": "No anomalous behavioral flags detected"})
-
-        st.table(pd.DataFrame(reasons))
+            # Explainability / Drivers
+            st.markdown("##### 🔍 Key Risk Drivers for this Transaction")
+            if top_features:
+                driver_rows = []
+                for feat in top_features:
+                    driver_rows.append({
+                        "Feature": feat.get("feature"),
+                        "SHAP Impact Score": f"+{feat.get('impact_score'):.4f}",
+                        "Operational Explanation": feat.get("description"),
+                    })
+                st.table(pd.DataFrame(driver_rows))
+            else:
+                heuristic_reasons = []
+                if amt > 500:
+                    heuristic_reasons.append({"Feature": "Transaction Amount", "Detail": f"${amt:.2f}", "Role": "Elevated ticket size"})
+                if c1_val > 10 or c13_val > 20:
+                    heuristic_reasons.append({"Feature": "Velocity Counters", "Detail": f"C1={c1_val}, C13={c13_val}", "Role": "Elevated transaction velocity"})
+                if p_email != r_email:
+                    heuristic_reasons.append({"Feature": "Email Domain Mismatch", "Detail": f"{p_email} vs {r_email}", "Role": "Discrepancy between purchaser and recipient"})
+                if card6 == "credit":
+                    heuristic_reasons.append({"Feature": "Card Type", "Detail": "credit", "Role": "Higher historical chargeback exposure than debit"})
+                if not heuristic_reasons:
+                    heuristic_reasons.append({"Feature": "Baseline History", "Detail": "Normal", "Role": "No anomalous flags detected"})
+                st.table(pd.DataFrame(heuristic_reasons))
 
 # -------------------------------------------------------------
 # TAB 2: Batch CSV Scoring
 # -------------------------------------------------------------
 elif app_mode == "Batch CSV Scoring":
-    st.title("📁 Batch Transaction Scoring & Audit")
-    st.markdown(
-        "Upload a batch CSV of raw transactions to process through the full pipeline, "
-        "identify suspicious clusters, and download scored results."
-    )
+    st.title("📂 Batch Transaction Audit & Scoring")
+    st.markdown("Upload a CSV file containing unlabelled transactions to run high-throughput batch scoring.")
 
     uploaded_file = st.file_uploader("Upload Transaction CSV", type=["csv"])
 
     if uploaded_file is not None:
-        raw_df = pd.read_csv(uploaded_file)
-        st.write(f"Loaded `{len(raw_df):,}` rows with `{raw_df.shape[1]}` columns.")
-        st.dataframe(raw_df.head(5))
+        try:
+            df_batch = pd.read_csv(uploaded_file)
+            st.write(f"Loaded **{len(df_batch):,} rows** and **{len(df_batch.columns)} columns**.")
 
-        if st.button("🚀 Process and Score Batch", use_container_width=True):
-            with st.spinner("Transforming features and running LightGBM inference..."):
-                X_batch, _ = pipeline.transform(raw_df)
-                probs = model.predict_proba(X_batch)[:, 1]
+            if st.button("🚀 Execute Batch Scoring"):
+                if local_pipeline is not None and local_model is not None:
+                    with st.spinner("Transforming features and executing LightGBM scoring..."):
+                        X_batch = local_pipeline.transform(df_batch)
+                        preds = local_model.predict_proba(X_batch)[:, 1]
 
-                raw_df["fraud_probability"] = np.round(probs, 4)
-                raw_df["is_fraud"] = probs >= optimal_threshold
-                raw_df["decision"] = np.where(
-                    probs >= 0.50, "DECLINE",
-                    np.where(probs >= optimal_threshold, "CHALLENGE", "APPROVE")
-                )
+                        df_scored = df_batch.copy()
+                        df_scored["fraud_probability"] = np.round(preds, 4)
+                        df_scored["decision"] = np.where(
+                            preds >= 0.50,
+                            "DECLINE",
+                            np.where(preds >= operating_threshold, "CHALLENGE", "APPROVE"),
+                        )
 
-            st.success("Batch scoring complete!")
+                    st.success("Batch scoring completed successfully!")
 
-            total_tx = len(raw_df)
-            flagged_tx = int(raw_df["is_fraud"].sum())
-            flagged_pct = (flagged_tx / total_tx) * 100
-            total_flagged_amt = raw_df[raw_df["is_fraud"]]["TransactionAmt"].sum() if "TransactionAmt" in raw_df else 0
+                    # Summary Metrics
+                    b_col1, b_col2, b_col3 = st.columns(3)
+                    n_declined = int((df_scored["decision"] == "DECLINE").sum())
+                    n_challenge = int((df_scored["decision"] == "CHALLENGE").sum())
+                    n_approved = int((df_scored["decision"] == "APPROVE").sum())
 
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Total Scored", f"{total_tx:,}")
-            m2.metric("Flagged for Action", f"{flagged_tx:,} ({flagged_pct:.1f}%)")
-            m3.metric("Protected Transaction Volume", f"${total_flagged_amt:,.2f}")
+                    b_col1.metric("Blocked / Declined", f"{n_declined:,} ({(n_declined/len(df_scored))*100:.1f}%)")
+                    b_col2.metric("Challenged (3D-Secure)", f"{n_challenge:,} ({(n_challenge/len(df_scored))*100:.1f}%)")
+                    b_col3.metric("Auto-Approved", f"{n_approved:,} ({(n_approved/len(df_scored))*100:.1f}%)")
 
-            st.dataframe(raw_df[["TransactionID", "TransactionAmt", "fraud_probability", "decision"]].head(25))
+                    st.dataframe(df_scored.head(50))
 
-            csv_download = raw_df.to_csv(index=False).encode("utf-8")
-            st.download_button(
-                "📥 Download Scored CSV",
-                csv_download,
-                "scored_transactions.csv",
-                "text/csv",
-                use_container_width=True,
-            )
+                    csv_data = df_scored.to_csv(index=False).encode("utf-8")
+                    st.download_button(
+                        label="📥 Download Scored CSV Report",
+                        data=csv_data,
+                        file_name="fraud_scored_transactions.csv",
+                        mime="text/csv",
+                    )
+                else:
+                    st.warning("Batch scoring currently requires local model artifacts in models/.")
+        except Exception as e:
+            st.error(f"Error processing CSV: {str(e)}")
 
 # -------------------------------------------------------------
 # TAB 3: Model Analytics & Performance
 # -------------------------------------------------------------
 elif app_mode == "Model Analytics & Performance":
-    st.title("📊 Executive Model Analytics & Validation Benchmarks")
+    st.title("📊 Production Model Performance & Analytics")
     st.markdown(
-        "Comprehensive model evaluation results on the unseen **88,581 Holdout Test Set** "
-        "following chronological out-of-time evaluation."
+        "Verified evaluation metrics on the holdout test set (88,581 transactions), "
+        "demonstrating the business and statistical improvements over the baseline."
     )
 
-    # Key Metrics Cards
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-    kpi1.metric("Holdout PR-AUC", "0.5522", "+330.1% vs Baseline")
+    kpi1.metric("PR-AUC (Primary)", "0.5522", "+330.1% vs Baseline")
     kpi2.metric("ROC-AUC", "0.9128", "+17.8% vs Baseline")
-    kpi3.metric("Simulated Cost Reduction", "54.83%", "$17,754 Saved")
-    kpi4.metric("Recall @ 80% Precision", "35.94%", "Frictionless Block")
+    kpi3.metric("Cost Reduction", "54.83%", "$17,754 Saved")
+    kpi4.metric("Operating Cutoff ($T^*$)", f"{operating_threshold:.4f}", "Cost-Optimized")
 
     st.markdown("---")
+    st.subheader("📈 Diagnostic Performance Curves")
 
-    col_img1, col_img2 = st.columns(2)
+    tab_pr, tab_cost, tab_cm, tab_shap = st.tabs([
+        "PR Curve", "Cost vs. Threshold", "Confusion Matrix", "SHAP Feature Importance"
+    ])
 
-    with col_img1:
-        st.subheader("Precision-Recall Curve Comparison")
+    with tab_pr:
         pr_path = REPORTS_DIR / "pr_curve.png"
         if pr_path.is_file():
-            st.image(str(pr_path), caption="PR-AUC: Baseline Logistic Regression (0.13) vs. LightGBM (0.55)")
+            st.image(str(pr_path), caption="Precision-Recall Curve on Holdout Test Set")
+        else:
+            st.info("PR curve plot not found in reports/")
 
-    with col_img2:
-        st.subheader("Cost vs. Decision Threshold")
+    with tab_cost:
         cost_path = REPORTS_DIR / "cost_vs_threshold.png"
         if cost_path.is_file():
-            st.image(str(cost_path), caption="Optimal Threshold (0.054) Minimizing Total Business Cost")
+            st.image(str(cost_path), caption="Simulated Business Cost vs Decision Threshold")
+        else:
+            st.info("Cost curve plot not found in reports/")
 
-    col_img3, col_img4 = st.columns(2)
-
-    with col_img3:
-        st.subheader("Final Test Confusion Matrix")
+    with tab_cm:
         cm_path = REPORTS_DIR / "final_confusion_matrix.png"
         if cm_path.is_file():
-            st.image(str(cm_path), caption="Confusion Matrix on 88,581 Holdout Transactions at Optimal Threshold")
+            st.image(str(cm_path), caption="Confusion Matrix at Optimal Operating Threshold")
+        else:
+            st.info("Confusion matrix plot not found in reports/")
 
-    with col_img4:
-        st.subheader("Global SHAP Feature Importance")
+    with tab_shap:
         shap_path = REPORTS_DIR / "shap_summary.png"
         if shap_path.is_file():
-            st.image(str(shap_path), caption="Top 20 Features Driving Tree Decisions via Tree SHAP")
-
-    # Benchmarks Table
-    st.subheader("Model Progression Benchmarks")
-    comp_path = REPORTS_DIR / "model_comparison.csv"
-    if comp_path.is_file():
-        comp_df = pd.read_csv(comp_path)
-        st.dataframe(comp_df, use_container_width=True)
+            st.image(str(shap_path), caption="Tree SHAP Beeswarm Feature Impact Summary")
+        else:
+            st.info("SHAP plot not found in reports/")
