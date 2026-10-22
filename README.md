@@ -52,6 +52,16 @@ All metrics were computed strictly on the **out-of-time holdout test set (88,581
   - At the cost-tuned operating threshold ($T^* = 0.0543$), LightGBM produces **5,204 false alarms** compared to the baseline's **23,218 false alarms**—a **77.59% reduction in false positives (4.46x fewer false alarms)** while catching 2,141 frauds.
   - At the default threshold ($T = 0.5000$), false alarms drop by **98.81% (84.1x fewer false alarms)** from 23,218 to just 276.
 
+### Visual Diagnostic Plots
+
+<p align="center">
+  <img src="reports/pr_curve.png" alt="Precision-Recall Curve" width="48%"/>
+  <img src="reports/cost_vs_threshold.png" alt="Cost vs Decision Threshold" width="48%"/>
+</p>
+<p align="center">
+  <img src="reports/final_confusion_matrix.png" alt="Confusion Matrix at Optimal Operating Threshold" width="55%"/>
+</p>
+
 ---
 
 ## 📈 Cost-Ratio Sensitivity Analysis
