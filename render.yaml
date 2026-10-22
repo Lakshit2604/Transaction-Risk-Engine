@@ -1,4 +1,5 @@
 services:
+  # Fast, asynchronous transaction scoring microservice
   - type: web
     name: transaction-risk-api
     env: python
@@ -11,6 +12,7 @@ services:
       - key: PORT
         value: 10000
 
+  # Risk operations & executive analytics dashboard
   - type: web
     name: transaction-risk-dashboard
     env: python
@@ -21,3 +23,8 @@ services:
     envVars:
       - key: PORT
         value: 10000
+      - key: API_URL
+        fromService:
+          type: web
+          name: transaction-risk-api
+          property: hostport

@@ -41,6 +41,8 @@ FINAL_METRICS_PATH = REPORTS_DIR / "final_metrics.json"
 
 # API Configuration from environment variable
 API_URL = os.getenv("API_URL", "http://localhost:8000").rstrip("/")
+if not API_URL.startswith("http://") and not API_URL.startswith("https://"):
+    API_URL = f"http://{API_URL}"
 
 
 def check_api_health(url: str) -> Tuple[bool, Dict[str, Any]]:
